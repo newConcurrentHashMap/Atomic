@@ -1,25 +1,21 @@
 package com.example.demo.review.thread.demo1.map;
 
+import com.example.demo.review.thread.demo1.map.test.HashMapPrinter;
+import com.example.demo.review.thread.demo1.map.test.entity.UserKey;
+
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.Serializable;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.AbstractCollection;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
-import java.util.Hashtable;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -73,16 +69,17 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
      * between resizing and treeification thresholds.
      */
     static final int MIN_TREEIFY_CAPACITY = 64;
+    //static final int MIN_TREEIFY_CAPACITY = 8;
 
     /**
      * Basic hash bin node, used for most entries.  (See below for
      * TreeNode subclass, and in LinkedHashMap for its Entry subclass.)
      */
-    static class Node<K,V> implements MapTest.Entry<K,V> {
+    public static class Node<K,V> implements MapTest.Entry<K,V> {
         final int hash;
         final K key;
         V value;
-        Node<K,V> next;
+        public Node<K,V> next;
 
         Node(int hash, K key, V value, Node<K,V> next) {
             this.hash = hash;
@@ -1592,10 +1589,10 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
      * extends Node) so can be used as extension of either regular or
      * linked node.
      */
-    static final class TreeNode<K,V> extends LinkedHashMapTest.Entry<K,V> {
+    public static final class TreeNode<K,V> extends LinkedHashMapTest.Entry<K,V> implements HashMapPrinter.PrintableNode {
         TreeNode<K,V> parent;  // red-black tree links
-        TreeNode<K,V> left;
-        TreeNode<K,V> right;
+        public TreeNode<K,V> left;
+        public TreeNode<K,V> right;
         TreeNode<K,V> prev;    // needed to unlink next upon deletion
         boolean red;
         TreeNode(int hash, K key, V val, Node<K,V> next) {
@@ -1697,7 +1694,7 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
         /**
          * Forms tree of the nodes linked from this node.
          */
-        final void treeify(Node<K,V>[] tab) {
+        public final void treeify(Node<K,V>[] tab) {
             TreeNode<K,V> root = null;
             for (TreeNode<K,V> x = this, next; x != null; x = next) {
                 next = (TreeNode<K,V>)x.next;
@@ -1838,6 +1835,7 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
                     && (root.right == null
                     || (rl = root.left) == null
                     || rl.left == null))) {
+                System.out.println("退为链表");
                 tab[index] = first.untreeify(map);  // too small
                 return;
             }
@@ -2180,7 +2178,92 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
                 return false;
             return true;
         }
+
+        @Override
+        public HashMapPrinter.PrintableNode getLeft() {
+            return left;
+        }
+
+        @Override
+        public HashMapPrinter.PrintableNode getRight() {
+            return right;
+        }
+
+        @Override
+        public String getText() {
+            return key==null?"null":key.toString();
+        }
     }
+
+    public void printCurrentStructure() {
+        System.out.println("start----------------->");
+        System.out.println("table.length:"+table.length);
+        for (int i = 0; i < table.length; i++) {
+            Node<K, V> node = table[i];
+            if(node == null) {
+                continue;
+            }
+            if (node instanceof TreeNode) {
+                printTree(i);
+            } else {
+                printLinkedTable(i);
+            }
+
+        }
+        System.out.println("<<<<<<<<<<<===========end");
+
+    }
+
+    public void printLinkedTable(int index) {
+        Node<K, V> head = table[index];
+        System.out.print("table["+index+"]:");
+        HashMapPrinter.printLinkedNode(head);
+    }
+
+    public void printTree(int index) {
+        Node<K, V> root = table[index];
+        if (root instanceof HashMapPrinter.PrintableNode) {
+            HashMapPrinter.printTree((HashMapPrinter.PrintableNode) root);
+        } else {
+            System.out.println("非树不能打印");
+        }
+    }
+
+
+
+
+
+    public static void main(String[] args) {
+        HashMapTest map = new HashMapTest();
+        TreeNode<UserKey, Integer>[] nodes = map.constructLinkedTableTreeNode(20);
+        TreeNode<UserKey, Integer> root = nodes[0];
+        root.treeify(nodes);
+        HashMapPrinter.printTree(root);
+    }
+
+
+
+
+
+    public TreeNode<UserKey,Integer>[] constructLinkedTableTreeNode(int size) {
+        TreeNode<UserKey,Integer>[] nodes = new TreeNode[size];
+        for (int i = 0; i < size; i++) {
+            UserKey key = new UserKey("k"+i);
+            int hashcode = key.hashCode();
+            TreeNode<UserKey, Integer> newNode = new TreeNode<>(hashcode, key, i, null);
+            if (i > 0) {
+                int prev = i-1;
+                nodes[prev].next = newNode;
+            }
+            nodes[i] = newNode;
+        }
+        return nodes;
+    }
+
+
+
+
+
 
 }
 
