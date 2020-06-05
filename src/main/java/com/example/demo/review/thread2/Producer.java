@@ -6,15 +6,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Producer implements Runnable {
 
-    private Container container;
-
-    public Producer(Container container) {
-        this.container = container;
-    }
+//    private Container container;
+//
+//    public Producer(Container container) {
+//        this.container = container;
+//    }
 
     @Override
     public void run() {
-        container.put();
+        TreadProductConsumerTest.container.put();
     }
 
 }

@@ -3,6 +3,7 @@ package com.example.demo.review.thread2;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedList;
+import java.util.Random;
 
 @Slf4j
 public class Container {
@@ -11,15 +12,14 @@ public class Container {
     //private LinkTest<Integer> container = new LinkTest<>();
 
     //容量
-    private int capacity = 10;
+    private final int capacity = 10;
 
     private volatile int num = 0;
 
 
     public void put() {
-        while (true) {
             try {
-                Thread.sleep(1);
+                Thread.sleep(new Random().nextInt(2000));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -36,18 +36,14 @@ public class Container {
                 ++num;
                 log.info("生产者:{},加了1碗饭,饭桶中现在有:{}碗饭", Thread.currentThread().getName(), num);
                 notifyAll();
-
-            }
-
         }
 
     }
 
     public void take() {
 
-        while (true) {
             try {
-                Thread.sleep(1);
+                Thread.sleep(new Random().nextInt(2000));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -66,5 +62,4 @@ public class Container {
                 notifyAll();
             }
         }
-    }
 }

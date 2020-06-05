@@ -1,24 +1,24 @@
 package com.example.demo.review.thread2;
 
+import org.junit.Test;
+
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
+
 public class TreadProductConsumerTest {
 
 
-    public static void main(String[] args) {
-        Container container = new Container();
-        Thread producer1 = new Thread(new Producer(container));
-        Thread producer2 = new Thread(new Producer(container));
-        Thread producer3 = new Thread(new Producer(container));
+    public static Container container = new Container();
 
-        Thread consumer1 = new Thread(new Consumer(container));
-        Thread consumer2 = new Thread(new Consumer(container));
-        Thread consumer3 = new Thread(new Consumer(container));
+    @Test
+    public void test() throws InterruptedException {
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(500);
 
-        producer1.start();
-        producer2.start();
-        producer3.start();
+        for (int i = 0; i < 500; i++) {
+            new Thread(new Dog(cyclicBarrier)).start();
+        }
 
-        consumer1.start();
-        consumer2.start();
-        consumer3.start();
+
+        TimeUnit.SECONDS.sleep(10);
     }
 }
