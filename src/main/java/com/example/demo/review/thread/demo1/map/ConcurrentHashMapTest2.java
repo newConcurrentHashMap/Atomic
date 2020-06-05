@@ -7,7 +7,7 @@ public class ConcurrentHashMapTest2 {
 
 
     public static void main(String[] args) {
-        ConcurrentHashMapTest<Object, Object> map = new ConcurrentHashMapTest<>(1);
+        ConcurrentHashMapTest<Object, Object> map = new ConcurrentHashMapTest<>();
         map.put("元素1","啦啦啦1");
         map.put("元素2","啦啦啦2");
         map.put("元素3","啦啦啦3");

@@ -1,4 +1,4 @@
-package com.example.demo.review.thread.demo1.array;
+package com.example.demo.review.array;
 
 import java.util.Arrays;
 

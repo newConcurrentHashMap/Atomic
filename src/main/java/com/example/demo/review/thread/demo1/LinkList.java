@@ -1,4 +1,4 @@
-package com.example.demo.review.thread.demo1.hashset;
+package com.example.demo.review.thread.demo1;
 
 
 import java.util.Collection;

@@ -20,7 +20,6 @@ import java.util.Spliterator;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountedCompleter;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
@@ -153,7 +152,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * are special, and contain null keys and values (but are never
      * exported).  Otherwise, keys and vals are never null.
      */
-    static class Node<K, V> implements Map.Entry<K, V> {
+    static class Node<K, V> implements Entry<K, V> {
         final int hash;
         final K key;
         volatile V val;
@@ -188,9 +187,9 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
 
         public final boolean equals(Object o) {
             Object k, v, u;
-            Map.Entry<?, ?> e;
+            Entry<?, ?> e;
             return ((o instanceof Map.Entry) &&
-                    (k = (e = (Map.Entry<?, ?>) o).getKey()) != null &&
+                    (k = (e = (Entry<?, ?>) o).getKey()) != null &&
                     (v = e.getValue()) != null &&
                     (k == key || k.equals(key)) &&
                     (v == (u = val) || v.equals(u)));
@@ -600,6 +599,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
                 tab = helpTransfer(tab, oldNode);
             else {
                 V oldValue = null;
+                //lock enter
                 synchronized (oldNode) {
                     if (tabAt(tab, elementInTableIndex) == oldNode) {
 
@@ -656,7 +656,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      */
     public void putAll(Map<? extends K, ? extends V> m) {
         tryPresize(m.size());
-        for (Map.Entry<? extends K, ? extends V> e : m.entrySet())
+        for (Entry<? extends K, ? extends V> e : m.entrySet())
             putVal(e.getKey(), e.getValue(), false);
     }
 
@@ -846,7 +846,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      *
      * @return the set view
      */
-    public Set<Map.Entry<K, V>> entrySet() {
+    public Set<Entry<K, V>> entrySet() {
         ConcurrentHashMapTest.EntrySetView<K, V> es;
         return (es = entrySet) != null ? es : (entrySet = new ConcurrentHashMapTest.EntrySetView<K, V>(this));
     }
@@ -926,7 +926,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
                 if (v == null || (v != val && !v.equals(val)))
                     return false;
             }
-            for (Map.Entry<?, ?> e : m.entrySet()) {
+            for (Entry<?, ?> e : m.entrySet()) {
                 Object mk, mv, v;
                 if ((mk = e.getKey()) == null ||
                         (mv = e.getValue()) == null ||
@@ -1820,6 +1820,8 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         }
         return tab;
     }
+
+
 
     /**
      * Adds to count, and if table is too small and not already
@@ -2817,12 +2819,12 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
             return true;
         }
 
-        private static final sun.misc.Unsafe U;
+        private static final Unsafe U;
         private static final long LOCKSTATE;
 
         static {
             try {
-                U = sun.misc.Unsafe.getUnsafe();
+                U = Unsafe.getUnsafe();
                 Class<?> k = ConcurrentHashMapTest.TreeBin.class;
                 LOCKSTATE = U.objectFieldOffset
                         (k.getDeclaredField("lockState"));
@@ -3033,13 +3035,13 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     }
 
     static final class EntryIterator<K, V> extends ConcurrentHashMapTest.BaseIterator<K, V>
-            implements Iterator<Map.Entry<K, V>> {
+            implements Iterator<Entry<K, V>> {
         EntryIterator(ConcurrentHashMapTest.Node<K, V>[] tab, int index, int size, int limit,
                       ConcurrentHashMapTest<K, V> map) {
             super(tab, index, size, limit, map);
         }
 
-        public final Map.Entry<K, V> next() {
+        public final Entry<K, V> next() {
             ConcurrentHashMapTest.Node<K, V> p;
             if ((p = next) == null)
                 throw new NoSuchElementException();
@@ -3054,7 +3056,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     /**
      * Exported Entry for EntryIterator
      */
-    static final class MapEntry<K, V> implements Map.Entry<K, V> {
+    static final class MapEntry<K, V> implements Entry<K, V> {
         final K key; // non-null
         V val;       // non-null
         final ConcurrentHashMapTest<K, V> map;
@@ -3083,9 +3085,9 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
 
         public boolean equals(Object o) {
             Object k, v;
-            Map.Entry<?, ?> e;
+            Entry<?, ?> e;
             return ((o instanceof Map.Entry) &&
-                    (k = (e = (Map.Entry<?, ?>) o).getKey()) != null &&
+                    (k = (e = (Entry<?, ?>) o).getKey()) != null &&
                     (v = e.getValue()) != null &&
                     (k == key || k.equals(key)) &&
                     (v == val || v.equals(val)));
@@ -3192,7 +3194,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     }
 
     static final class EntrySpliterator<K, V> extends ConcurrentHashMapTest.Traverser<K, V>
-            implements Spliterator<Map.Entry<K, V>> {
+            implements Spliterator<Entry<K, V>> {
         final ConcurrentHashMapTest<K, V> map; // To export MapEntry
         long est;               // size estimate
 
@@ -3203,20 +3205,20 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
             this.est = est;
         }
 
-        public Spliterator<Map.Entry<K, V>> trySplit() {
+        public Spliterator<Entry<K, V>> trySplit() {
             int i, f, h;
             return (h = ((i = baseIndex) + (f = baseLimit)) >>> 1) <= i ? null :
                     new ConcurrentHashMapTest.EntrySpliterator<K, V>(tab, baseSize, baseLimit = h,
                             f, est >>>= 1, map);
         }
 
-        public void forEachRemaining(Consumer<? super Map.Entry<K, V>> action) {
+        public void forEachRemaining(Consumer<? super Entry<K, V>> action) {
             if (action == null) throw new NullPointerException();
             for (ConcurrentHashMapTest.Node<K, V> p; (p = advance()) != null; )
                 action.accept(new ConcurrentHashMapTest.MapEntry<K, V>(p.key, p.val, map));
         }
 
-        public boolean tryAdvance(Consumer<? super Map.Entry<K, V>> action) {
+        public boolean tryAdvance(Consumer<? super Entry<K, V>> action) {
             if (action == null) throw new NullPointerException();
             ConcurrentHashMapTest.Node<K, V> p;
             if ((p = advance()) == null)
@@ -3801,7 +3803,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public void forEachEntry(long parallelismThreshold,
-                             Consumer<? super Map.Entry<K, V>> action) {
+                             Consumer<? super Entry<K, V>> action) {
         if (action == null) throw new NullPointerException();
         new ConcurrentHashMapTest.ForEachEntryTask<K, V>(null, batchFor(parallelismThreshold), 0, 0, table,
                 action).invoke();
@@ -3821,7 +3823,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public <U> void forEachEntry(long parallelismThreshold,
-                                 Function<Map.Entry<K, V>, ? extends U> transformer,
+                                 Function<Entry<K, V>, ? extends U> transformer,
                                  Consumer<? super U> action) {
         if (transformer == null || action == null)
             throw new NullPointerException();
@@ -3847,7 +3849,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public <U> U searchEntries(long parallelismThreshold,
-                               Function<Map.Entry<K, V>, ? extends U> searchFunction) {
+                               Function<Entry<K, V>, ? extends U> searchFunction) {
         if (searchFunction == null) throw new NullPointerException();
         return new ConcurrentHashMapTest.SearchEntriesTask<K, V, U>
                 (null, batchFor(parallelismThreshold), 0, 0, table,
@@ -3864,8 +3866,8 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @return the result of accumulating all entries
      * @since 1.8
      */
-    public Map.Entry<K, V> reduceEntries(long parallelismThreshold,
-                                         BiFunction<Map.Entry<K, V>, Map.Entry<K, V>, ? extends Map.Entry<K, V>> reducer) {
+    public Entry<K, V> reduceEntries(long parallelismThreshold,
+                                         BiFunction<Entry<K, V>, Entry<K, V>, ? extends Entry<K, V>> reducer) {
         if (reducer == null) throw new NullPointerException();
         return new ConcurrentHashMapTest.ReduceEntriesTask<K, V>
                 (null, batchFor(parallelismThreshold), 0, 0, table,
@@ -3889,7 +3891,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public <U> U reduceEntries(long parallelismThreshold,
-                               Function<Map.Entry<K, V>, ? extends U> transformer,
+                               Function<Entry<K, V>, ? extends U> transformer,
                                BiFunction<? super U, ? super U, ? extends U> reducer) {
         if (transformer == null || reducer == null)
             throw new NullPointerException();
@@ -3914,7 +3916,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public double reduceEntriesToDouble(long parallelismThreshold,
-                                        ToDoubleFunction<Map.Entry<K, V>> transformer,
+                                        ToDoubleFunction<Entry<K, V>> transformer,
                                         double basis,
                                         DoubleBinaryOperator reducer) {
         if (transformer == null || reducer == null)
@@ -3940,7 +3942,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public long reduceEntriesToLong(long parallelismThreshold,
-                                    ToLongFunction<Map.Entry<K, V>> transformer,
+                                    ToLongFunction<Entry<K, V>> transformer,
                                     long basis,
                                     LongBinaryOperator reducer) {
         if (transformer == null || reducer == null)
@@ -3966,7 +3968,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public int reduceEntriesToInt(long parallelismThreshold,
-                                  ToIntFunction<Map.Entry<K, V>> transformer,
+                                  ToIntFunction<Entry<K, V>> transformer,
                                   int basis,
                                   IntBinaryOperator reducer) {
         if (transformer == null || reducer == null)
@@ -3983,7 +3985,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * Base class for views.
      */
     abstract static class CollectionView<K, V, E>
-            implements Collection<E>, java.io.Serializable {
+            implements Collection<E>, Serializable {
         private static final long serialVersionUID = 7249069246763182397L;
         final ConcurrentHashMapTest<K, V> map;
 
@@ -4162,7 +4164,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * @since 1.8
      */
     public static class KeySetView<K, V> extends ConcurrentHashMapTest.CollectionView<K, V, K>
-            implements Set<K>, java.io.Serializable {
+            implements Set<K>, Serializable {
         private static final long serialVersionUID = 7249069246763182397L;
         private final V value;
 
@@ -4293,7 +4295,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * directly instantiated. See {@link #values()}.
      */
     static final class ValuesView<K, V> extends ConcurrentHashMapTest.CollectionView<K, V, V>
-            implements Collection<V>, java.io.Serializable {
+            implements Collection<V>, Serializable {
         private static final long serialVersionUID = 2249069246763182397L;
 
         ValuesView(ConcurrentHashMapTest<K, V> map) {
@@ -4355,8 +4357,8 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
      * entries.  This class cannot be directly instantiated. See
      * {@link #entrySet()}.
      */
-    static final class EntrySetView<K, V> extends ConcurrentHashMapTest.CollectionView<K, V, Map.Entry<K, V>>
-            implements Set<Map.Entry<K, V>>, java.io.Serializable {
+    static final class EntrySetView<K, V> extends ConcurrentHashMapTest.CollectionView<K, V, Entry<K, V>>
+            implements Set<Entry<K, V>>, Serializable {
         private static final long serialVersionUID = 2249069246763182397L;
 
         EntrySetView(ConcurrentHashMapTest<K, V> map) {
@@ -4365,9 +4367,9 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
 
         public boolean contains(Object o) {
             Object k, v, r;
-            Map.Entry<?, ?> e;
+            Entry<?, ?> e;
             return ((o instanceof Map.Entry) &&
-                    (k = (e = (Map.Entry<?, ?>) o).getKey()) != null &&
+                    (k = (e = (Entry<?, ?>) o).getKey()) != null &&
                     (r = map.get(k)) != null &&
                     (v = e.getValue()) != null &&
                     (v == r || v.equals(r)));
@@ -4375,9 +4377,9 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
 
         public boolean remove(Object o) {
             Object k, v;
-            Map.Entry<?, ?> e;
+            Entry<?, ?> e;
             return ((o instanceof Map.Entry) &&
-                    (k = (e = (Map.Entry<?, ?>) o).getKey()) != null &&
+                    (k = (e = (Entry<?, ?>) o).getKey()) != null &&
                     (v = e.getValue()) != null &&
                     map.remove(k, v));
         }
@@ -4385,20 +4387,20 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         /**
          * @return an iterator over the entries of the backing map
          */
-        public Iterator<Map.Entry<K, V>> iterator() {
+        public Iterator<Entry<K, V>> iterator() {
             ConcurrentHashMapTest<K, V> m = map;
             ConcurrentHashMapTest.Node<K, V>[] t;
             int f = (t = m.table) == null ? 0 : t.length;
             return new ConcurrentHashMapTest.EntryIterator<K, V>(t, f, 0, f, m);
         }
 
-        public boolean add(Map.Entry<K, V> e) {
+        public boolean add(Entry<K, V> e) {
             return map.putVal(e.getKey(), e.getValue(), false) == null;
         }
 
-        public boolean addAll(Collection<? extends Map.Entry<K, V>> c) {
+        public boolean addAll(Collection<? extends Entry<K, V>> c) {
             boolean added = false;
-            for (Map.Entry<K, V> e : c) {
+            for (Entry<K, V> e : c) {
                 if (add(e))
                     added = true;
             }
@@ -4424,7 +4426,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
                             (containsAll(c) && c.containsAll(this))));
         }
 
-        public Spliterator<Map.Entry<K, V>> spliterator() {
+        public Spliterator<Entry<K, V>> spliterator() {
             ConcurrentHashMapTest.Node<K, V>[] t;
             ConcurrentHashMapTest<K, V> m = map;
             long n = m.sumCount();
@@ -4432,7 +4434,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
             return new ConcurrentHashMapTest.EntrySpliterator<K, V>(t, f, 0, f, n < 0L ? 0L : n, m);
         }
 
-        public void forEach(Consumer<? super Map.Entry<K, V>> action) {
+        public void forEach(Consumer<? super Entry<K, V>> action) {
             if (action == null) throw new NullPointerException();
             ConcurrentHashMapTest.Node<K, V>[] t;
             if ((t = map.table) != null) {
@@ -4607,17 +4609,17 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class ForEachEntryTask<K, V>
             extends ConcurrentHashMapTest.BulkTask<K, V, Void> {
-        final Consumer<? super Map.Entry<K, V>> action;
+        final Consumer<? super Entry<K, V>> action;
 
         ForEachEntryTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
-                 Consumer<? super Map.Entry<K, V>> action) {
+                 Consumer<? super Entry<K, V>> action) {
             super(p, b, i, f, t);
             this.action = action;
         }
 
         public final void compute() {
-            final Consumer<? super Map.Entry<K, V>> action;
+            final Consumer<? super Entry<K, V>> action;
             if ((action = this.action) != null) {
                 for (int i = baseIndex, f, h; batch > 0 &&
                         (h = ((f = baseLimit) + i) >>> 1) > i; ) {
@@ -4737,19 +4739,19 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class ForEachTransformedEntryTask<K, V, U>
             extends ConcurrentHashMapTest.BulkTask<K, V, Void> {
-        final Function<Map.Entry<K, V>, ? extends U> transformer;
+        final Function<Entry<K, V>, ? extends U> transformer;
         final Consumer<? super U> action;
 
         ForEachTransformedEntryTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
-                 Function<Map.Entry<K, V>, ? extends U> transformer, Consumer<? super U> action) {
+                 Function<Entry<K, V>, ? extends U> transformer, Consumer<? super U> action) {
             super(p, b, i, f, t);
             this.transformer = transformer;
             this.action = action;
         }
 
         public final void compute() {
-            final Function<Map.Entry<K, V>, ? extends U> transformer;
+            final Function<Entry<K, V>, ? extends U> transformer;
             final Consumer<? super U> action;
             if ((transformer = this.transformer) != null &&
                     (action = this.action) != null) {
@@ -4910,12 +4912,12 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class SearchEntriesTask<K, V, U>
             extends ConcurrentHashMapTest.BulkTask<K, V, U> {
-        final Function<Map.Entry<K, V>, ? extends U> searchFunction;
+        final Function<Entry<K, V>, ? extends U> searchFunction;
         final AtomicReference<U> result;
 
         SearchEntriesTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
-                 Function<Map.Entry<K, V>, ? extends U> searchFunction,
+                 Function<Entry<K, V>, ? extends U> searchFunction,
                  AtomicReference<U> result) {
             super(p, b, i, f, t);
             this.searchFunction = searchFunction;
@@ -4927,7 +4929,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         }
 
         public final void compute() {
-            final Function<Map.Entry<K, V>, ? extends U> searchFunction;
+            final Function<Entry<K, V>, ? extends U> searchFunction;
             final AtomicReference<U> result;
             if ((searchFunction = this.searchFunction) != null &&
                     (result = this.result) != null) {
@@ -5117,26 +5119,26 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
 
     @SuppressWarnings("serial")
     static final class ReduceEntriesTask<K, V>
-            extends ConcurrentHashMapTest.BulkTask<K, V, Map.Entry<K, V>> {
-        final BiFunction<Map.Entry<K, V>, Map.Entry<K, V>, ? extends Map.Entry<K, V>> reducer;
-        Map.Entry<K, V> result;
+            extends ConcurrentHashMapTest.BulkTask<K, V, Entry<K, V>> {
+        final BiFunction<Entry<K, V>, Entry<K, V>, ? extends Entry<K, V>> reducer;
+        Entry<K, V> result;
         ConcurrentHashMapTest.ReduceEntriesTask<K, V> rights, nextRight;
 
         ReduceEntriesTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
                  ConcurrentHashMapTest.ReduceEntriesTask<K, V> nextRight,
-                 BiFunction<Map.Entry<K, V>, Map.Entry<K, V>, ? extends Map.Entry<K, V>> reducer) {
+                 BiFunction<Entry<K, V>, Entry<K, V>, ? extends Entry<K, V>> reducer) {
             super(p, b, i, f, t);
             this.nextRight = nextRight;
             this.reducer = reducer;
         }
 
-        public final Map.Entry<K, V> getRawResult() {
+        public final Entry<K, V> getRawResult() {
             return result;
         }
 
         public final void compute() {
-            final BiFunction<Map.Entry<K, V>, Map.Entry<K, V>, ? extends Map.Entry<K, V>> reducer;
+            final BiFunction<Entry<K, V>, Entry<K, V>, ? extends Entry<K, V>> reducer;
             if ((reducer = this.reducer) != null) {
                 for (int i = baseIndex, f, h; batch > 0 &&
                         (h = ((f = baseLimit) + i) >>> 1) > i; ) {
@@ -5145,7 +5147,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
                             (this, batch >>>= 1, baseLimit = h, f, tab,
                                     rights, reducer)).fork();
                 }
-                Map.Entry<K, V> r = null;
+                Entry<K, V> r = null;
                 for (ConcurrentHashMapTest.Node<K, V> p; (p = advance()) != null; )
                     r = (r == null) ? p : reducer.apply(r, p);
                 result = r;
@@ -5156,7 +5158,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
                             t = (ConcurrentHashMapTest.ReduceEntriesTask<K, V>) c,
                             s = t.rights;
                     while (s != null) {
-                        Map.Entry<K, V> tr, sr;
+                        Entry<K, V> tr, sr;
                         if ((sr = s.result) != null)
                             t.result = (((tr = t.result) == null) ? sr :
                                     reducer.apply(tr, sr));
@@ -5290,7 +5292,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class MapReduceEntriesTask<K, V, U>
             extends ConcurrentHashMapTest.BulkTask<K, V, U> {
-        final Function<Map.Entry<K, V>, ? extends U> transformer;
+        final Function<Entry<K, V>, ? extends U> transformer;
         final BiFunction<? super U, ? super U, ? extends U> reducer;
         U result;
         ConcurrentHashMapTest.MapReduceEntriesTask<K, V, U> rights, nextRight;
@@ -5298,7 +5300,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         MapReduceEntriesTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
                  ConcurrentHashMapTest.MapReduceEntriesTask<K, V, U> nextRight,
-                 Function<Map.Entry<K, V>, ? extends U> transformer,
+                 Function<Entry<K, V>, ? extends U> transformer,
                  BiFunction<? super U, ? super U, ? extends U> reducer) {
             super(p, b, i, f, t);
             this.nextRight = nextRight;
@@ -5311,7 +5313,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         }
 
         public final void compute() {
-            final Function<Map.Entry<K, V>, ? extends U> transformer;
+            final Function<Entry<K, V>, ? extends U> transformer;
             final BiFunction<? super U, ? super U, ? extends U> reducer;
             if ((transformer = this.transformer) != null &&
                     (reducer = this.reducer) != null) {
@@ -5524,7 +5526,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class MapReduceEntriesToDoubleTask<K, V>
             extends ConcurrentHashMapTest.BulkTask<K, V, Double> {
-        final ToDoubleFunction<Map.Entry<K, V>> transformer;
+        final ToDoubleFunction<Entry<K, V>> transformer;
         final DoubleBinaryOperator reducer;
         final double basis;
         double result;
@@ -5533,7 +5535,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         MapReduceEntriesToDoubleTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
                  ConcurrentHashMapTest.MapReduceEntriesToDoubleTask<K, V> nextRight,
-                 ToDoubleFunction<Map.Entry<K, V>> transformer,
+                 ToDoubleFunction<Entry<K, V>> transformer,
                  double basis,
                  DoubleBinaryOperator reducer) {
             super(p, b, i, f, t);
@@ -5548,7 +5550,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         }
 
         public final void compute() {
-            final ToDoubleFunction<Map.Entry<K, V>> transformer;
+            final ToDoubleFunction<Entry<K, V>> transformer;
             final DoubleBinaryOperator reducer;
             if ((transformer = this.transformer) != null &&
                     (reducer = this.reducer) != null) {
@@ -5752,7 +5754,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class MapReduceEntriesToLongTask<K, V>
             extends ConcurrentHashMapTest.BulkTask<K, V, Long> {
-        final ToLongFunction<Map.Entry<K, V>> transformer;
+        final ToLongFunction<Entry<K, V>> transformer;
         final LongBinaryOperator reducer;
         final long basis;
         long result;
@@ -5761,7 +5763,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         MapReduceEntriesToLongTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
                  ConcurrentHashMapTest.MapReduceEntriesToLongTask<K, V> nextRight,
-                 ToLongFunction<Map.Entry<K, V>> transformer,
+                 ToLongFunction<Entry<K, V>> transformer,
                  long basis,
                  LongBinaryOperator reducer) {
             super(p, b, i, f, t);
@@ -5776,7 +5778,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         }
 
         public final void compute() {
-            final ToLongFunction<Map.Entry<K, V>> transformer;
+            final ToLongFunction<Entry<K, V>> transformer;
             final LongBinaryOperator reducer;
             if ((transformer = this.transformer) != null &&
                     (reducer = this.reducer) != null) {
@@ -5980,7 +5982,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     @SuppressWarnings("serial")
     static final class MapReduceEntriesToIntTask<K, V>
             extends ConcurrentHashMapTest.BulkTask<K, V, Integer> {
-        final ToIntFunction<Map.Entry<K, V>> transformer;
+        final ToIntFunction<Entry<K, V>> transformer;
         final IntBinaryOperator reducer;
         final int basis;
         int result;
@@ -5989,7 +5991,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         MapReduceEntriesToIntTask
                 (ConcurrentHashMapTest.BulkTask<K, V, ?> p, int b, int i, int f, ConcurrentHashMapTest.Node<K, V>[] t,
                  ConcurrentHashMapTest.MapReduceEntriesToIntTask<K, V> nextRight,
-                 ToIntFunction<Map.Entry<K, V>> transformer,
+                 ToIntFunction<Entry<K, V>> transformer,
                  int basis,
                  IntBinaryOperator reducer) {
             super(p, b, i, f, t);
@@ -6004,7 +6006,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
         }
 
         public final void compute() {
-            final ToIntFunction<Map.Entry<K, V>> transformer;
+            final ToIntFunction<Entry<K, V>> transformer;
             final IntBinaryOperator reducer;
             if ((transformer = this.transformer) != null &&
                     (reducer = this.reducer) != null) {
@@ -6092,7 +6094,7 @@ public class ConcurrentHashMapTest<K, V> extends AbstractMap<K, V>
     }
 
     // Unsafe mechanics
-    private static final sun.misc.Unsafe U;
+    private static final Unsafe U;
     private static final long SIZECTL;
     private static final long TRANSFERINDEX;
     private static final long BASECOUNT;

@@ -2,6 +2,7 @@ package com.example.demo.review.thread.demo1.map;
 
 import com.example.demo.review.thread.demo1.map.test.HashMapPrinter;
 import com.example.demo.review.thread.demo1.map.test.entity.UserKey;
+import sun.misc.SharedSecrets;
 
 import java.io.IOException;
 import java.io.InvalidObjectException;
@@ -20,7 +21,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import sun.misc.SharedSecrets;
 
 public class HashMapTest<K,V> extends AbstractMapTest<K,V>
         implements MapTest<K,V>, Cloneable, Serializable {
@@ -68,8 +68,8 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
      * Should be at least 4 * TREEIFY_THRESHOLD to avoid conflicts
      * between resizing and treeification thresholds.
      */
-    static final int MIN_TREEIFY_CAPACITY = 64;
-    //static final int MIN_TREEIFY_CAPACITY = 8;
+    //static final int MIN_TREEIFY_CAPACITY = 64;
+    static final int MIN_TREEIFY_CAPACITY = 8;
 
     /**
      * Basic hash bin node, used for most entries.  (See below for
@@ -1615,14 +1615,30 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
          */
         static <K,V> void moveRootToFront(Node<K,V>[] tab, TreeNode<K,V> root) {
             int n;
+            //如果树的根节点不为空&&isNotEmpty(tab)
             if (root != null && tab != null && (n = tab.length) > 0) {
+
+                //算出树的根节点所处的桶坐标
                 int index = (n - 1) & root.hash;
+
+                //将这个坐标下的头节点转换成树节点对象
                 TreeNode<K,V> first = (TreeNode<K,V>)tab[index];
+
+                //如果树的根节点和桶的头节点不一致
                 if (root != first) {
+
+                    //树的根节点的下层节点
                     Node<K,V> rn;
+
+                    //将树的根节点赋值给头节点
                     tab[index] = root;
+
+                    //找到树的根节点的上层节点(原先是链表结构)
                     TreeNode<K,V> rp = root.prev;
+
+                    //如果树的根节点的下层节点不为空
                     if ((rn = root.next) != null)
+
                         ((TreeNode<K,V>)rn).prev = rp;
                     if (rp != null)
                         rp.next = rn;
@@ -1762,6 +1778,9 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
             boolean searched = false;
             TreeNode<K,V> root = (parent != null) ? root() : this;
             for (TreeNode<K,V> p = root;;) {
+
+                //dir>0 find right
+                //dir<=0 find left
                 int dir, ph; K pk;
                 if ((ph = p.hash) > h)
                     dir = -1;
@@ -1786,6 +1805,8 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
 
                 TreeNode<K,V> xp = p;
                 if ((p = (dir <= 0) ? p.left : p.right) == null) {
+
+                    //当前树节点的下一个节点
                     Node<K,V> xpn = xp.next;
                     TreeNode<K,V> x = map.newTreeNode(h, k, v, xpn);
                     if (dir <= 0)
@@ -1971,8 +1992,12 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
         /* ------------------------------------------------------------ */
         // Red-black tree methods, all adapted from CLR
 
+        //这里的root只是局部的,不一定是真正的根节点
+        //左旋转:逆时针旋转,将当前节点的父节点的右孩子,替换为当前节点的父节点的父节点(爷爷节点)
+        //并将新的爷爷节点的左孩子给当前节点父节点的右孩子
         static <K,V> TreeNode<K,V> rotateLeft(TreeNode<K,V> root,
                                                                 TreeNode<K,V> p) {
+
             TreeNode<K,V> r, pp, rl;
             if (p != null && (r = p.right) != null) {
                 if ((rl = p.right = r.left) != null)
@@ -1989,6 +2014,9 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
             return root;
         }
 
+        //这里的root只是局部的,不一定是真正的根节点
+        //右旋转:顺时针旋转,将当前节点的父节点的左孩子,替换为当前节点的父节点的父节点(爷爷节点)
+        //并将新的爷爷节点的右孩子给当前节点父节点的左孩子
         static <K,V> TreeNode<K,V> rotateRight(TreeNode<K,V> root,
                                                                  TreeNode<K,V> p) {
             TreeNode<K,V> l, pp, lr;
@@ -2007,39 +2035,79 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
             return root;
         }
 
-        static <K,V> TreeNode<K,V> balanceInsertion(TreeNode<K,V> root,
-                                                                      TreeNode<K,V> x) {
+
+        //红黑树的调整规则类似于魔方,不通局面有调整公式,插入和删除的所有局面统计有5(插入)+3(删除)+6(删除调整),总计14种情况
+        static <K,V> TreeNode<K,V> balanceInsertion(TreeNode<K,V> root, TreeNode<K,V> x) {
+
+            //所有节点上来都是红色
             x.red = true;
+
+
+            //xp 当前节点的父节点 xpp当前节点的爷爷节点 xppl 当前节点的左叔叔节点 xppr当前节点的右叔叔节点
             for (TreeNode<K,V> xp, xpp, xppl, xppr;;) {
+
+                //如果当前节点的父节点为空(根节点),则节点颜色为黑色 结束
                 if ((xp = x.parent) == null) {
                     x.red = false;
                     return x;
                 }
+
+                //如果当前节点的父节点是黑色||爷爷节点是空,则不需要调整,返回root节点 因为这里逻辑有递归循环,相当于到最后xp=root
                 else if (!xp.red || (xpp = xp.parent) == null)
                     return root;
+
+                //如果父节点是爷爷节点的左孩子
                 if (xp == (xppl = xpp.left)) {
+
+                    //爷爷节点的右孩子不为空 && 右孩子是红色
                     if ((xppr = xpp.right) != null && xppr.red) {
+
+                        // 局面3：新结点（D）的父结点和叔叔结点都是红色||新结点（D）的父结点黑色，叔叔结点红色
+                        //变色操作 右叔叔节点变黑色,父节点变黑色,爷爷节点变红
                         xppr.red = false;
                         xp.red = false;
                         xpp.red = true;
-                        x = xpp;
+                        x = xpp; // 运行到这里之后，就又会进行下一轮的循环了，将爷爷节点当做处理的起始节点
                     }
                     else {
+
+                        //如果父节点是爷爷节点的左孩子&& 当前节点是父节点的右孩子 && 当前节点是红色 &&（右叔叔为空 ||右叔叔为黑色）
+                        //局面5：新结点（D）的父结点是红色，叔叔结点是黑色或者没有叔叔，且新结点是父结点的左孩子，父结点（B）是祖父结点的左孩子(镜像)
                         if (x == xp.right) {
+
+                            //局面5本应该是右旋,因为镜像的缘故,这里应该左旋
                             root = rotateLeft(root, x = xp);
+
+                            //获取爷爷节点,当作下一次循环的起始节点
                             xpp = (xp = x.parent) == null ? null : xp.parent;
                         }
+
+                        //如果父节点不为空
                         if (xp != null) {
+
+                            //父节点设置为黑色
                             xp.red = false;
+
+                            //如果爷爷节点不为空
                             if (xpp != null) {
+
+                                //爷爷节点设置为红色
                                 xpp.red = true;
+
+                                //局面4 新结点（D）的父结点是红色，叔叔结点是黑色或者没有叔叔，且新结点是父结点的右孩子，父结点（B）是祖父结点的左孩子(镜像)
+                                //右旋操作
                                 root = rotateRight(root, xpp);
                             }
                         }
                     }
                 }
+
+                //如果父节点是爷爷节点的右孩子(类似与上面的逻辑)
                 else {
+                    //如果左叔叔节点不为空且是红色
                     if (xppl != null && xppl.red) {
+
+                        //变色操作
                         xppl.red = false;
                         xp.red = false;
                         xpp.red = true;
@@ -2155,27 +2223,57 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
         }
 
         /**
-         * Recursive invariant check
+         * 1.结点是红色或黑色。
+         * <p>
+         * 2.根结点是黑色。
+         * <p>
+         * 3.每个叶子结点都是黑色的空结点（NIL结点）。
+         * <p>
+         * 4 每个红色结点的两个子结点都是黑色。(从每个叶子到根的所有路径上不能有两个连续的红色结点)
+         * <p>
+         * 5.从任一结点到其每个叶子的所有路径都包含相同数目的黑色结点。
          */
-        static <K,V> boolean checkInvariants(TreeNode<K,V> t) {
-            TreeNode<K,V> tp = t.parent, tl = t.left, tr = t.right,
-                    tb = t.prev, tn = (TreeNode<K,V>)t.next;
-            if (tb != null && tb.next != t)
+        static <K,V> boolean checkInvariants(TreeNode<K,V> currentTreeNode) {
+
+
+            TreeNode<K,V> currentTreeNodeParent = currentTreeNode.parent;
+            TreeNode<K,V> currentTreeNodeLeft = currentTreeNode.left;
+            TreeNode<K,V> currentTreeNodeRight = currentTreeNode.right;
+            TreeNode<K,V> currentTreeNodePrev = currentTreeNode.prev;
+            TreeNode<K,V> currentTreeNodeNext = (TreeNode<K,V>)currentTreeNode.next;
+
+            //如果当前节点的前置节点不为空 && 前置节点的下一个节点不是当前节点
+            if (currentTreeNodePrev != null && currentTreeNodePrev.next != currentTreeNode)
                 return false;
-            if (tn != null && tn.prev != t)
+
+            //如果当前节点的后置节点部位空 && 后置节点的prev不是当前节点
+            if (currentTreeNodeNext != null && currentTreeNodeNext.prev != currentTreeNode)
                 return false;
-            if (tp != null && t != tp.left && t != tp.right)
+
+            //如果当前节点的父节点部位空 && 当前节点不是当前节点父节点的左节点 && 当前节点不是当前节点父节点的右节点
+            if (currentTreeNodeParent != null && currentTreeNode != currentTreeNodeParent.left && currentTreeNode != currentTreeNodeParent.right)
                 return false;
-            if (tl != null && (tl.parent != t || tl.hash > t.hash))
+
+            //如果当前节点的左节点不为空 && (当前节点的左节点的父节点不是当前节点 || 当前节点的左节点hash值>当前节点hash值)【hashMap通过hash值做key构造树,左边hash必须小与当前hash】
+            if (currentTreeNodeLeft != null && (currentTreeNodeLeft.parent != currentTreeNode || currentTreeNodeLeft.hash > currentTreeNode.hash))
                 return false;
-            if (tr != null && (tr.parent != t || tr.hash < t.hash))
+
+            //如果当前节点的右节点不为空 && (当前节点的右节点的父节点不是当前节点 || 当前节点的右节点hash值<当前节点hash值)【hashMap通过hash值做key构造树,右边hash必须大与当前hash】
+            if (currentTreeNodeRight != null && (currentTreeNodeRight.parent != currentTreeNode || currentTreeNodeRight.hash < currentTreeNode.hash))
                 return false;
-            if (t.red && tl != null && tl.red && tr != null && tr.red)
+
+            //如果当前节点是红色 && 当前节点的左节点不为空 && 当前节点的左节点也是红色（rule-4）&& 当前节点的右节点不为空 && 当前节点的右节点也是红色(rule-4)
+            if (currentTreeNode.red && currentTreeNodeLeft != null && currentTreeNodeLeft.red && currentTreeNodeRight != null && currentTreeNodeRight.red)
                 return false;
-            if (tl != null && !checkInvariants(tl))
+
+            //如果当前节点的左节点不为空 && checkInvariants =false 此时是将左节点看作root,但是不校验根节点颜色(rule-2)
+            if (currentTreeNodeLeft != null && !checkInvariants(currentTreeNodeLeft))
                 return false;
-            if (tr != null && !checkInvariants(tr))
+
+            //如果当前节点的右节点不为空 && checkInvariants =false 此时是将右节点看作root,但是不校验根节点颜色(rule-2)
+            if (currentTreeNodeRight != null && !checkInvariants(currentTreeNodeRight))
                 return false;
+
             return true;
         }
 
@@ -2191,7 +2289,8 @@ public class HashMapTest<K,V> extends AbstractMapTest<K,V>
 
         @Override
         public String getText() {
-            return key==null?"null":key.toString();
+            return key==null?"null":this.red?"(red)"+key.toString()+"[next:"+this.next+"]"+"[perv:"+this.prev+"]":
+                    key.toString()+"[next:"+this.next+"]"+"[perv:"+this.prev+"]";
         }
     }
 
